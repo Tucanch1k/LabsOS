@@ -4,19 +4,20 @@
 #include <string.h>
 #include <stdbool.h>
 #include <errno.h>
-#include <unistd.h>  
+#include <unistd.h>
+#include <regex.h>
 
 static void usage(const char *prog) {
     fprintf(stderr, "Usage: %s PATTERN [FILE...]\n", prog);
 }
 
-static int process_stream(FILE *f, const char *fname, const char *pattern, bool multiple_files) {
+static int process_stream(FILE *f, const char *fname, regex_t *re, bool multiple_files) {
     char *line = NULL;
     size_t len = 0;
     ssize_t r;
     int matched = 1; // 0 = нашёл совпадение, 1 = нет
     while ((r = getline(&line, &len, f)) != -1) {
-        if (strstr(line, pattern)) {
+        if (regexec(re, line, 0, NULL, 0) == 0) {
             matched = 0;
             if (multiple_files && fname)
                 printf("%s:%s", fname, line);
@@ -47,11 +48,21 @@ int main(int argc, char **argv) {
     int files_count = argc - optind;
     bool multiple_files = files_count > 1;
 
+    // Компиляция regex
+    regex_t re;
+    int ret = regcomp(&re, pattern, REG_EXTENDED | REG_NEWLINE);
+    if (ret != 0) {
+        char errbuf[256];
+        regerror(ret, &re, errbuf, sizeof(errbuf));
+        fprintf(stderr, "%s: invalid regex '%s': %s\n", argv[0], pattern, errbuf);
+        return 2;
+    }
+
     int exit_code = 1; // 0 = совпадения найдены, 1 = нет совпадений, 2 = ошибка
     bool had_error = false;
 
     if (files_count == 0) {
-        int res = process_stream(stdin, NULL, pattern, false);
+        int res = process_stream(stdin, NULL, &re, false);
         if (res == 0) exit_code = 0;
     } else {
         for (int i = optind; i < argc; i++) {
@@ -67,11 +78,13 @@ int main(int argc, char **argv) {
                     continue;
                 }
             }
-            int res = process_stream(f, fname, pattern, multiple_files);
+            int res = process_stream(f, fname, &re, multiple_files);
             if (res == 0) exit_code = 0;
             if (f != stdin) fclose(f);
         }
     }
+
+    regfree(&re);
 
     if (had_error && exit_code == 1) exit_code = 2;
     return exit_code;
