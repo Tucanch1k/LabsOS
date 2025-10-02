@@ -15,16 +15,14 @@
 #include <getopt.h>
 #include <limits.h>
 
-/* Цвета */
-#define COLOR_DIR   "\033[34m"   // синий
-#define COLOR_EXEC  "\033[32m"   // зелёный
-#define COLOR_LINK  "\033[36m"   // бирюзовый
+#define COLOR_DIR   "\033[34m" // blue
+#define COLOR_EXEC  "\033[32m" // green
+#define COLOR_LINK  "\033[36m" // cyan
 #define COLOR_RESET "\033[0m"
 
 int opt_long = 0;
 int opt_all  = 0;
 
-/* преобразование прав доступа */
 void mode_to_str(mode_t mode, char *out) {
     out[0] = S_ISDIR(mode) ? 'd' :
              S_ISLNK(mode) ? 'l' : '-';
@@ -44,13 +42,11 @@ void mode_to_str(mode_t mode, char *out) {
     out[10] = '\0';
 }
 
-/* форматирование времени */
 void time_to_str(time_t t, char *buf, size_t size) {
     struct tm *tm = localtime(&t);
     strftime(buf, size, "%b %e %H:%M", tm);
 }
 
-/* какой цвет выбрать */
 const char *file_color(struct stat *st) {
     if (S_ISLNK(st->st_mode)) return COLOR_LINK;
     if (S_ISDIR(st->st_mode)) return COLOR_DIR;
@@ -58,14 +54,12 @@ const char *file_color(struct stat *st) {
     return NULL;
 }
 
-/* сортировка имён */
 int cmp_strcoll(const void *a, const void *b) {
     const char *sa = *(const char * const *)a;
     const char *sb = *(const char * const *)b;
     return strcoll(sa, sb);
 }
 
-/* вывод одного файла */
 void print_entry(const char *path, const char *name) {
     struct stat st;
     if (lstat(path, &st) == -1) {
@@ -86,13 +80,18 @@ void print_entry(const char *path, const char *name) {
         struct passwd *pw = getpwuid(st.st_uid);
         struct group  *gr = getgrgid(st.st_gid);
 
-        printf("%s %3ld %s %s %8ld %s ",
-            perms,
-            (long)st.st_nlink,
-            pw ? pw->pw_name : "?",
-            gr ? gr->gr_name : "?",
-            (long)st.st_size,
-            timebuf);
+        const char *user = pw ? pw->pw_name : NULL;
+        const char *group = gr ? gr->gr_name : NULL;
+
+        printf("%s %3ld ", perms, (long)st.st_nlink);
+
+        if (user) printf("%-8s ", user);
+        else      printf("%-8d ", st.st_uid);
+
+        if (group) printf("%-8s ", group);
+        else       printf("%-8d ", st.st_gid);
+
+        printf("%8ld %s ", (long)st.st_size, timebuf);
 
         const char *c = file_color(&st);
         if (c) printf("%s%s%s", c, name, COLOR_RESET);
@@ -110,7 +109,6 @@ void print_entry(const char *path, const char *name) {
     }
 }
 
-/* листинг директории */
 void list_dir(const char *dirname) {
     DIR *d = opendir(dirname);
     if (!d) {
