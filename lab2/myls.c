@@ -132,23 +132,27 @@ void list_dir(const char *dirname) {
 
     qsort(names, count, sizeof(char*), cmp_strcoll);
 
-    if (!opt_long) {
+    if (opt_long) {
+	long total_blocks = 0;
         for (size_t i=0; i<count; i++) {
             char path[PATH_MAX];
             snprintf(path, sizeof(path), "%s/%s", dirname, names[i]);
-            print_entry(path, names[i]);
-            free(names[i]);
+            struct stat st;
+            if (lstat(path, &st) == 0) {
+		total_blocks += st.st_blocks;
+	    }
         }
-        printf("\n");
-    } else {
-        for (size_t i=0; i<count; i++) {
-            char path[PATH_MAX];
-            snprintf(path, sizeof(path), "%s/%s", dirname, names[i]);
-            print_entry(path, names[i]);
-            free(names[i]);
-        }
+        printf("total %ld\n", total_blocks / 2);
+    }
+    for (size_t i=0; i<count; i++) {
+        char path[PATH_MAX];
+        snprintf(path, sizeof(path), "%s/%s", dirname, names[i]);
+        print_entry(path, names[i]);
+        free(names[i]);
     }
     free(names);
+    
+    if (!opt_long) printf("\n");
 }
 
 int main(int argc, char *argv[]) {
