@@ -23,7 +23,7 @@ void sem_wait(int semid) {
 }
 
 void sem_signal(int semid) {
-    struct sembbuf op = {0, 1, 0};
+    struct sembuf op = {0, 1, 0};
     semop(semid, &op, 1);
 }
 
