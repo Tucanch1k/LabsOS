@@ -5,6 +5,7 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <time.h>
+#include <signal.h>
 
 
 #define SHM_KEY 0x12345
