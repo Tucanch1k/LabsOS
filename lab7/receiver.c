@@ -10,17 +10,25 @@
 #define SHM_KEY 0x12345
 #define SHM_SIZE 256
 
+int shmid;
+char *data;
+
+void free_at_exit(int sig){
+    shmdt(data);
+    exit(EXIT_SUCCESS);
+}
 
 int main() {
-    int shmid = shmget(SHM_KEY, SHM_SIZE, 0666);
+    shmid = shmget(SHM_KEY, SHM_SIZE, 0666);
     if (shmid == -1) {
         printf("Shared memory not found. Run sender first.\n");
         return 1;
     }
 
 
-    char *data = (char *)shmat(shmid, NULL, 0);
+    data = (char *)shmat(shmid, NULL, 0);
     if (data == (char*) -1) {
+        
     perror("shmat");
     exit(1);
     }
@@ -28,7 +36,10 @@ int main() {
 
     printf("Receiver started. PID=%d\n", getpid());
 
+    signal(SIGINT, free_at_exit);
+    signal(SIGTERM, free_at_exit);
 
+    
     while (1) {
         time_t now = time(NULL);
         struct tm *tm_info = localtime(&now);
